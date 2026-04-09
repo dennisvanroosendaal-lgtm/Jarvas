@@ -72,7 +72,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--black);font-fa
 }
 .orb-bg.listening{background:radial-gradient(ellipse at 50% 50%,rgba(248,113,113,.06) 0%,transparent 65%)}
 .orb-bg.thinking{background:radial-gradient(ellipse at 50% 50%,rgba(255,221,0,.08) 0%,transparent 65%)}
-.orb-bg.speaking{background:radial-gradient(ellipse at 50% 50%,rgba(74,222,128,.07) 0%,transparent 65%)}
+.orb-bg.speaking{background:radial-gradient(ellipse at 50% 50%,rgba(255,221,0,.08) 0%,transparent 65%)}
 .orb-bg.error{background:radial-gradient(ellipse at 50% 50%,rgba(248,113,113,.05) 0%,transparent 65%)}
 
 #orb-canvas{width:100%;height:100%;display:block;position:relative;z-index:1}
@@ -104,7 +104,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--black);font-fa
 .sdot.ready{background:var(--green);box-shadow:0 0 6px rgba(74,222,128,.6)}
 .sdot.thinking{background:var(--accent);animation:bl 1s infinite}
 .sdot.listening{background:var(--red);animation:bl .45s infinite}
-.sdot.speaking{background:var(--green);animation:bl .35s infinite}
+.sdot.speaking{background:var(--accent);animation:bl .35s infinite}
 .sdot.error{background:var(--red);box-shadow:0 0 6px rgba(248,113,113,.6)}
 @keyframes bl{0%,100%{opacity:1}50%{opacity:.08}}
 .gear{
@@ -208,7 +208,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--black);font-fa
     </div>
     <button class="stb" id="testVoiceBtn">STEM TESTEN</button>
     <button class="sb" id="setupBtn">ACTIVEER JARVIS</button>
-    <div class="sinfo">🔒 Keys lokaal opgeslagen — verlaten je apparaat nooit.<br><br>💡 Voor Android werkt een Nederlandse mannelijke Google- of Samsung-stem meestal het best.</div>
+    <div class="sinfo">🔒 Keys lokaal opgeslagen — verlaten je apparaat nooit.<br><br>💡 Alleen Nederlandse stemmen worden getoond. Voor Android werkt een Nederlandse mannelijke Google- of Samsung-stem meestal het best.</div>
   </div>
 </div>
 
@@ -395,8 +395,8 @@ function setOrbMode(mode){
 
   if (mode === 'speaking'){
     speakTick = setInterval(() => {
-      orbETarget = Math.random() * 0.75 + 0.35;
-    }, 65);
+      orbETarget = Math.random() * 0.55 + 0.2;
+    }, 90);
   } else if (mode === 'listening'){
     orbETarget = 0.5;
   } else if (mode === 'thinking'){
@@ -421,7 +421,7 @@ function orbCol(a){
   switch(orbMode){
     case 'listening': return `rgba(248,113,113,${a})`;
     case 'thinking': return `rgba(255,200,0,${a})`;
-    case 'speaking': return `rgba(74,222,128,${a})`;
+    case 'speaking': return `rgba(255,200,0,${a})`;
     case 'error': return `rgba(248,113,113,${a})`;
     default: return `rgba(255,221,0,${a})`;
   }
@@ -465,7 +465,7 @@ function drawOrb(){
   orbE += (orbETarget - orbE) * 0.12;
 
   const am = orbMode === 'idle' ? 0.38 : 1;
-  const pulse = 0.5 + 0.5 * Math.sin(orbT * (orbMode === 'listening' ? 4 : orbMode === 'thinking' ? 3 : 1.1));
+  const pulse = 0.5 + 0.5 * Math.sin(orbT * (orbMode === 'listening' ? 4 : orbMode === 'thinking' ? 3 : orbMode === 'speaking' ? 2.8 : 1.1));
   const eb = 1 + orbE * 3.5;
 
   const gR = OR * (1.5 + orbE * 0.7);
@@ -510,7 +510,7 @@ function drawOrb(){
   ctx.fill();
 
   for (const p of pts){
-    const modeSpd = orbMode === 'thinking' ? 2.8 : orbMode === 'speaking' ? 2 : orbMode === 'listening' ? 1.6 : 1;
+    const modeSpd = orbMode === 'thinking' ? 2.8 : orbMode === 'speaking' ? 1.8 : orbMode === 'listening' ? 1.6 : 1;
     p.theta += p.tSpd * modeSpd * eb;
     p.phi += p.pSpd * (orbMode === 'idle' ? 0.6 : 1);
 
@@ -555,7 +555,7 @@ function drawOrb(){
 
   ctx.save();
   ctx.translate(OCX, OCY);
-  ctx.rotate(orbT * (orbMode === 'thinking' ? 1.8 : 0.6));
+  ctx.rotate(orbT * (orbMode === 'thinking' ? 1.8 : orbMode === 'speaking' ? 1.6 : 0.6));
   ctx.setLineDash([6, 14]);
   ctx.beginPath();
   ctx.arc(0, 0, OR * (1.15 + orbE * 0.08), 0, Math.PI * 2);
@@ -565,29 +565,10 @@ function drawOrb(){
   ctx.setLineDash([]);
   ctx.restore();
 
-  if (orbMode === 'speaking' && orbE > 0.1){
+  if (orbMode === 'listening' || orbMode === 'thinking' || orbMode === 'speaking'){
     ctx.save();
     ctx.translate(OCX, OCY);
-    const wR = OR * (1.1 + orbE * 0.12);
-    ctx.beginPath();
-    for (let wi = 0; wi <= 80; wi++){
-      const wa = (wi / 80) * Math.PI * 2;
-      const wamp = orbE * 0.22 * Math.sin(wa * 8 + orbT * 5);
-      const wx = Math.cos(wa) * (wR + wamp * OR) * 0.95;
-      const wy = Math.sin(wa) * (wR + wamp * OR) * 0.4;
-      wi === 0 ? ctx.moveTo(wx, wy) : ctx.lineTo(wx, wy);
-    }
-    ctx.closePath();
-    ctx.strokeStyle = orbCol(0.45 * orbE);
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  if (orbMode === 'listening' || orbMode === 'thinking'){
-    ctx.save();
-    ctx.translate(OCX, OCY);
-    ctx.rotate(orbT * (orbMode === 'listening' ? 3.2 : 2));
+    ctx.rotate(orbT * (orbMode === 'listening' ? 3.2 : orbMode === 'thinking' ? 2 : 1.8));
     const sg = ctx.createLinearGradient(0, 0, OR * 0.9, 0);
     sg.addColorStop(0, orbCol(0.5));
     sg.addColorStop(0.6, orbCol(0.15));
@@ -744,17 +725,17 @@ function summarize(data){
     `Netto winst: €${(omzetM + omzetT - kosten).toFixed(2)}`,
     '',
     '## MERCHANDISE VOORRAAD',
-    voorraadRegels.join('\\n') || 'Geen data',
+    voorraadRegels.join('\n') || 'Geen data',
     '',
     `## OPEN VERKOOPORDERS (${openOrders.length})`,
-    openOrders.join('\\n') || 'Geen',
+    openOrders.join('\n') || 'Geen',
     '',
     '## TICKETS',
-    tickets.join('\\n') || 'Geen',
+    tickets.join('\n') || 'Geen',
     '',
     '## LINEUP',
-    lineup.join('\\n') || 'Geen'
-  ].join('\\n');
+    lineup.join('\n') || 'Geen'
+  ].join('\n');
 }
 
 async function ask(q){
@@ -784,7 +765,7 @@ async function ask(q){
       'Geef exacte cijfers. Als iets niet in de data staat, zeg het direct.',
       '',
       kctx
-    ].join('\\n');
+    ].join('\n');
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method:'POST',
@@ -814,7 +795,7 @@ async function ask(q){
     }
 
     const reply = Array.isArray(raw?.content)
-      ? raw.content.map(part => part?.text || '').join('\\n').trim()
+      ? raw.content.map(part => part?.text || '').join('\n').trim()
       : '';
 
     if (!reply){
@@ -993,9 +974,10 @@ function scoreVoice(voice){
 }
 
 function fillVoiceSelect(){
-  const voices = speechSynthesis.getVoices() || [];
-  const current = S.selectedVoice || '';
+  const voices = (speechSynthesis.getVoices() || [])
+    .filter(v => String(v.lang || '').toLowerCase().startsWith('nl'));
 
+  const current = S.selectedVoice || '';
   el.voiceSelect.innerHTML = '<option value="">Automatisch beste stem kiezen</option>';
 
   voices
@@ -1017,8 +999,12 @@ function findSelectedVoice(voices){
 }
 
 function getBestAutomaticVoice(voices){
-  const sortedVoices = [...voices].sort((a, b) => scoreVoice(b) - scoreVoice(a));
-  return sortedVoices.find(v => String(v.lang || '').toLowerCase().startsWith('nl')) || sortedVoices[0] || null;
+  const nlVoices = (voices || []).filter(v =>
+    String(v.lang || '').toLowerCase().startsWith('nl')
+  );
+
+  const sortedVoices = [...nlVoices].sort((a, b) => scoreVoice(b) - scoreVoice(a));
+  return sortedVoices[0] || null;
 }
 
 function getChosenVoice(){
@@ -1034,10 +1020,10 @@ function speak(text){
   }
 
   const clean = String(text || '')
-    .replace(/\\*\\*(.*?)\\*\\*/g,'$1')
+    .replace(/\*\*(.*?)\*\*/g,'$1')
     .replace(/<[^>]+>/g,'')
-    .replace(/€([\\d.,]+)/g,'$1 euro')
-    .replace(/\\n+/g,'. ')
+    .replace(/€([\d.,]+)/g,'$1 euro')
+    .replace(/\n+/g,'. ')
     .replace(/•/g,'')
     .slice(0, 600)
     .trim();
@@ -1091,7 +1077,6 @@ function testVoice(){
 
   const chosen = getChosenVoice();
   const voiceName = chosen ? chosen.name : 'automatische stem';
-
   speak(`Goedendag Chef. Systeemcontrole voltooid. JARVIS online. Actieve stem: ${voiceName}.`);
 }
 
