@@ -657,6 +657,8 @@ function doSetup(){
   const ak = el.ak.value.trim(), bk = el.bk.value.trim(), ek = el.ek.value.trim(), ev = el.ev.value.trim();
   if (!ak.startsWith('sk-ant')){ toast('ONGELDIGE ANTHROPIC KEY'); return; }
   if (!bk){ toast('JSONBIN KEY INVULLEN'); return; }
+  if (ek && !ev){ toast('VOICE ID INVULLEN BIJ ELEVENLABS KEY'); return; }
+  if (!ek && ev){ toast('ELEVENLABS API KEY INVULLEN'); return; }
   localStorage.setItem('j_ak', ak);
   localStorage.setItem('j_bk', bk);
   localStorage.setItem('j_ek', ek);
@@ -899,7 +901,7 @@ function getChosenFallbackVoice(){
 
 async function speakWithFallback(text){
   return new Promise((resolve) => {
-    if (!window.speechSynthesis){ setStatus('ready','GEREED'); resolve(false); return; }
+    if (!window.speechSynthesis){ S.speaking = false; setStatus('ready','GEREED'); resolve(false); return; }
     const clean = String(text || '')
       .replace(/\*\*(.*?)\*\*/g,'$1')
       .replace(/<[^>]+>/g,'')
@@ -908,7 +910,7 @@ async function speakWithFallback(text){
       .replace(/•/g,'')
       .slice(0,600)
       .trim();
-    if (!clean){ setStatus('ready','GEREED'); resolve(false); return; }
+    if (!clean){ S.speaking = false; setStatus('ready','GEREED'); resolve(false); return; }
     const chosen = getChosenFallbackVoice();
     const utt = new SpeechSynthesisUtterance(clean);
     utt.lang = chosen?.lang || 'nl-NL';
@@ -950,11 +952,15 @@ async function speakWithElevenLabs(text){
   });
 
   if (!res.ok){
-    let msg = 'ElevenLabs fout';
+    S.speaking = false;
+    if (!S.listening && !S.thinking) setStatus('ready','GEREED');
+    let msg = 'ElevenLabs fout (HTTP ' + res.status + ')';
     try{
-      const txt = await res.text();
-      msg = txt || msg;
-    }catch(e){}
+      const json = await res.json();
+      msg = json?.detail?.message || json?.message || json?.error?.message || msg;
+    }catch(e){
+      try{ const txt = await res.text(); if (txt) msg = txt; }catch(e2){}
+    }
     throw new Error(msg);
   }
 
@@ -978,7 +984,13 @@ async function speakWithElevenLabs(text){
       if (!S.listening && !S.thinking) setStatus('ready','GEREED');
       reject(new Error('Audio afspelen mislukt.'));
     };
-    audio.play().catch(reject);
+    audio.play().catch(err => {
+      URL.revokeObjectURL(url);
+      S.currentAudio = null;
+      S.speaking = false;
+      if (!S.listening && !S.thinking) setStatus('ready','GEREED');
+      reject(err);
+    });
   });
 }
 
@@ -1001,7 +1013,12 @@ async function testAIVoice(){
   S.ev = el.ev.value.trim();
   localStorage.setItem('j_ek', S.ek);
   localStorage.setItem('j_ev', S.ev);
-  await speakText("Goedendag Chef. AI voice-systeem actief. JARVIS online.");
+  try{
+    await speakText("Goedendag Chef. AI voice-systeem actief. JARVIS online.");
+  }catch(e){
+    toast('Stemtest mislukt: ' + (e.message || 'onbekende fout'));
+    setStatus('ready','GEREED');
+  }
 }
 
 function bindEvents(){
